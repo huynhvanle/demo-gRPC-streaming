@@ -1,0 +1,61 @@
+syntax = "proto3";
+
+package sensor;
+
+// Cấu hình sinh mã Java
+option java_multiple_files = true;
+option java_package = "com.example.grpc";
+option java_outer_classname = "SensorProto";
+
+// Định nghĩa Service giám sát nhiệt độ cảm biến
+service SensorService {
+    // 1. Unary RPC: Client gửi 1 yêu cầu lấy nhiệt độ -> Server trả về đúng 1 kết quả
+    rpc GetCurrentTemperature (SensorRequest) returns (SensorData);
+
+    // 2. Server Streaming RPC: Client gửi yêu cầu theo dõi -> Server stream liên tiếp 5-10 bản ghi
+    rpc MonitorTemperature (SubscribeRequest) returns (stream SensorData);
+
+    // 3. Client Streaming RPC: Client stream nhiều bản ghi nhiệt độ -> Server tính toán và trả về 1 bản tóm tắt
+    rpc UploadSensorData (stream SensorData) returns (SensorSummary);
+
+    // 4. Bidirectional Streaming RPC: Client stream dữ liệu liên tục <-> Server stream phản hồi/cảnh báo song song
+    rpc LiveTemperatureControl (stream SensorData) returns (stream SensorAlert);
+}
+
+// Request cho Unary RPC
+message SensorRequest {
+    string sensor_id = 1;
+}
+
+// Request cho Server Streaming RPC
+message SubscribeRequest {
+    string sensor_id = 1;
+    int32 duration_seconds = 2; // Số giây (hoặc số bản ghi) theo dõi (ví dụ: 5-10)
+}
+
+// Dữ liệu nhiệt độ cảm biến (dùng cho Unary response, Server stream, Client stream)
+message SensorData {
+    string sensor_id = 1;
+    double temperature = 2;     // Độ C (ví dụ: 28.5)
+    string timestamp = 3;       // Thời điểm đo ISO-8601 hoặc yyyy-MM-dd HH:mm:ss
+    string status = 4;          // Trạng thái: "NORMAL", "HIGH", "ACTIVE"
+}
+
+// Phản hồi tổng kết cho Client Streaming RPC
+message SensorSummary {
+    string sensor_id = 1;
+    int32 total_records = 2;        // Tổng số bản ghi nhận được
+    double average_temperature = 3; // Nhiệt độ trung bình
+    double max_temperature = 4;     // Nhiệt độ cao nhất
+    double min_temperature = 5;     // Nhiệt độ thấp nhất
+    string summary_message = 6;     // Thông điệp đánh giá từ server
+}
+
+// Phản hồi cảnh báo cho Bidirectional Streaming RPC
+message SensorAlert {
+    string sensor_id = 1;
+    double temperature = 2;
+    string alert_level = 3;         // "NORMAL", "WARNING", "CRITICAL"
+    string alert_message = 4;       // Mô tả cảnh báo
+    string timestamp = 5;           // Thời điểm phát cảnh báo
+}
